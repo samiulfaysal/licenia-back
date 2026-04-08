@@ -24,6 +24,7 @@ model User {
   name        String?
   products    Product[]
   licenses    License[]
+  apiKeys     ApiKey[]  // <-- FIXED: Added the opposite relation here!
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
@@ -46,7 +47,8 @@ model Product {
 
 model License {
   id                  Int            @id @default(autoincrement())
-  keyHash             String         @unique
+  shortKey            String         // Used for fast lookups and safe UI previews
+  keyHash             String         @unique // Secure bcrypt hash of the full license key
   productId           Int
   userId              Int
   product             Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -58,20 +60,22 @@ model License {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   
+  // Model-level indexes
+  @@index([shortKey])
   @@index([productId])
   @@index([userId])
   @@index([status])
 }
 
 model Activation {
-  id          Int       @id @default(autoincrement())
-  licenseId   Int
-  license     License   @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-  domain      String
-  ipAddress   String?
-  userAgent   String?
-  activatedAt DateTime  @default(now())
-  lastValidatedAt DateTime @default(now())
+  id              Int       @id @default(autoincrement())
+  licenseId       Int
+  license         License   @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  domain          String
+  ipAddress       String?
+  userAgent       String?
+  activatedAt     DateTime  @default(now())
+  lastValidatedAt DateTime  @default(now())
   
   @@unique([licenseId, domain])
   @@index([licenseId])

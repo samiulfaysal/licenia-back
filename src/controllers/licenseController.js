@@ -17,10 +17,10 @@ exports.getLicenses = async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Hide sensitive data
+    // Hide sensitive data, show readable short key
     const sanitized = licenses.map(lic => ({
       id: lic.id,
-      keyPreview: lic.keyHash.substring(0, 10) + '...',
+      keyPreview: lic.shortKey + '••••••••', // UX Fix: Shows "MYAP-123••••••••"
       product: lic.product,
       status: lic.status,
       expiresAt: lic.expiresAt,
@@ -73,7 +73,7 @@ exports.generateLicense = async (req, res) => {
     const { productId, expiresAt, activationLimit } = req.body;
 
     // Validate input
-    const { error, value } = validation.schemas.generateLicense.validate(req.body);
+    const { error } = validation.schemas.generateLicense.validate(req.body);
     if (error) {
       return res.status(400).json({ error: error.message });
     }
@@ -90,15 +90,16 @@ exports.generateLicense = async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // Generate license key
+    // Generate license key and parts
     const licenseKey = crypto.generateLicenseKey(product.name, req.user.id);
+    const shortKey = licenseKey.substring(0, 8); // Extract first 8 chars for quick lookup
     const keyHash = await crypto.hashLicenseKey(licenseKey);
 
     // Create license
     const license = await prisma.license.create({
       data: {
-        keyHash,
-       // keyPlain: licenseKey, // Will be cleared before sending
+        shortKey, // Security Fix: Save the short key for fast database queries
+        keyHash,  // Security Fix: keyPlain is completely removed
         productId: parseInt(productId),
         userId: req.user.id,
         status: 'ACTIVE',
@@ -111,7 +112,7 @@ exports.generateLicense = async (req, res) => {
     // Return key ONLY during generation
     res.status(201).json({
       id: license.id,
-      licenseKey: licenseKey, // Only returned here, never again
+      licenseKey: licenseKey, // Only returned here, never saved in plain text
       status: license.status,
       expiresAt: license.expiresAt,
       activationLimit: license.activationLimit,
@@ -148,8 +149,12 @@ exports.validateLicense = async (req, res) => {
       });
     }
 
-    // Get all licenses and verify key
+    // Extract the short key to prevent loading the entire database into memory
+    const shortKey = licenseKey.substring(0, 8);
+
+    // Security Performance Fix: Only query licenses that match the shortKey
     const licenses = await prisma.license.findMany({
+      where: { shortKey },
       include: { product: true, activations: true }
     });
 
@@ -243,7 +248,11 @@ exports.activateLicense = async (req, res) => {
   try {
     const { licenseKey, domain } = req.body;
 
+    const shortKey = licenseKey.substring(0, 8);
+
+    // Security Performance Fix: Only query licenses that match the shortKey
     const licenses = await prisma.license.findMany({
+      where: { shortKey },
       include: { product: true, activations: true }
     });
 
