@@ -135,15 +135,15 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`
-  ╔═══════════════════════════════════════╗
-  ║  License Management SaaS API Started   ║
-  ║  🚀 Server running on port ${PORT}         ║
-  ║  🔗 http://localhost:${PORT}             ║
-  ║  📚 API Docs: http://localhost:${PORT}/api ║
-  ╚═══════════════════════════════════════╝
-  `);
+const PORT = process.env.PORT || 10000;
+
+// The '0.0.0.0' is the magic key for Render!
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`  ╔═══════════════════════════════════════╗`);
+  console.log(`  ║  License Management SaaS API Started  ║`);
+  console.log(`  ║  🚀 Server running on port ${PORT}      ║`);
+  console.log(`  ║  🔗 Bound to: 0.0.0.0 (PUBLIC)        ║`); 
+  console.log(`  ╚═══════════════════════════════════════╝`);
 });
 
 // Graceful shutdown
