@@ -132,7 +132,6 @@ app.use((err, req, res, next) => {
     message: process.env.NODE_ENV === 'development' ? err.message : 'An error occurred'
   });
 });
-
 // Start server
 const PORT = process.env.PORT || 10000;
 
