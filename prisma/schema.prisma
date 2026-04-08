@@ -1,0 +1,91 @@
+// License Management SaaS - Prisma Schema
+// Production-ready schema with security and validation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  INACTIVE
+}
+
+model User {
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  password    String
+  name        String?
+  products    Product[]
+  licenses    License[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([email])
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  ownerId     Int
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  description String?
+  licenses    License[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([name, ownerId])
+  @@index([ownerId])
+}
+
+model License {
+  id                  Int            @id @default(autoincrement())
+  keyHash             String         @unique
+  productId           Int
+  userId              Int
+  product             Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status              LicenseStatus  @default(ACTIVE)
+  expiresAt           DateTime?
+  activationLimit     Int            @default(1)
+  activations         Activation[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  
+  @@index([productId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Activation {
+  id          Int       @id @default(autoincrement())
+  licenseId   Int
+  license     License   @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  domain      String
+  ipAddress   String?
+  userAgent   String?
+  activatedAt DateTime  @default(now())
+  lastValidatedAt DateTime @default(now())
+  
+  @@unique([licenseId, domain])
+  @@index([licenseId])
+  @@index([domain])
+}
+
+model ApiKey {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyHash     String    @unique
+  name        String
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  
+  @@index([userId])
+}
